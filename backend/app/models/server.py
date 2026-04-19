@@ -7,6 +7,7 @@ class Server(Base):
 
     id                      = Column(Integer, primary_key=True, index=True)
     sl                      = Column(Integer)
+    customer_name           = Column(String)                           # NEW: Customer Name
     name                    = Column(String, index=True)
     private_ip              = Column(String)
     business_app            = Column(String)
@@ -43,7 +44,6 @@ class Server(Base):
 
 class CustomField(Base):
     __tablename__ = "custom_fields"
-
     id          = Column(Integer, primary_key=True, index=True)
     name        = Column(String, unique=True, nullable=False)
     label       = Column(String, nullable=False)
@@ -55,7 +55,6 @@ class CustomField(Base):
 
 class AuditLog(Base):
     __tablename__ = "audit_logs"
-
     id          = Column(Integer, primary_key=True, index=True)
     user_id     = Column(Integer, ForeignKey("users.id"))
     action      = Column(String)

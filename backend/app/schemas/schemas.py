@@ -34,6 +34,7 @@ class UserOut(BaseModel):
 
 class ServerCreate(BaseModel):
     sl: Optional[int] = None
+    customer_name: Optional[str] = None
     name: Optional[str] = None
     private_ip: Optional[str] = None
     business_app: Optional[str] = None

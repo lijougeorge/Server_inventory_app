@@ -106,6 +106,7 @@ export default function ServerDetail({ serverId, onClose, onEdit }) {
           <div style={{ padding:'24px', flex:1 }}>
             <Section title="Identity">
               <Field label="SL" value={server.sl} />
+              <Field label="Customer Name" value={server.customer_name} />
               <Field label="Name" value={server.name} />
               <Field label="Hostname" value={server.hostname} mono />
               <Field label="Private IP Address" value={server.private_ip} mono />

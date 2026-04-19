@@ -13,7 +13,8 @@ from app.models.server import Server, CustomField
 router = APIRouter()
 
 HEADERS = [
-    "SL","NAME","PRIVATE IP","BUSINESS APP","HOSTNAME",
+    "CUSTOMER NAME",
+    "SL","CUSTOMER NAME","NAME","PRIVATE IP","BUSINESS APP","HOSTNAME",
     "OS","VERSION","TYPE","ENV","PLATFORM","OPS MANAGER",
     "AZURE UPDATE SCHEDULE","DEFENDER","PAM","IPA INTEGRATION",
     "MSB COMPLIANCE","SUBSCRIPTION","LOCATION","RESOURCE GROUP",
@@ -47,6 +48,7 @@ def get_servers(db, **kw):
 
 def row_vals(s, custom_fields):
     row = [
+        s.customer_name,
         s.sl, s.name, s.private_ip, s.business_app, s.hostname,
         s.os_name, s.os_version, s.server_type, s.environment, s.platform,
         s.ops_manager, s.azure_update_schedule, s.onboarded_defender, s.onboarded_pam,

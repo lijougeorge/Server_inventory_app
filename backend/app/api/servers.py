@@ -10,8 +10,7 @@ from app.schemas.schemas import ServerCreate, ServerUpdate, ServerOut
 router = APIRouter()
 
 def log_action(db, user_id, action, resource_id, detail=None):
-    log = AuditLog(user_id=user_id, action=action, resource="server", resource_id=resource_id, detail=detail or {})
-    db.add(log)
+    db.add(AuditLog(user_id=user_id, action=action, resource="server", resource_id=resource_id, detail=detail or {}))
 
 @router.get("/", response_model=dict)
 def list_servers(
@@ -29,6 +28,7 @@ def list_servers(
     subscription: Optional[str] = None,
     crowdstrike: Optional[str] = None,
     onboarded_defender: Optional[str] = None,
+    customer_name: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
@@ -42,39 +42,41 @@ def list_servers(
             Server.owner.ilike(f"%{search}%"),
             Server.owner_team.ilike(f"%{search}%"),
             Server.subscription.ilike(f"%{search}%"),
-            Server.resource_group.ilike(f"%{search}%"),
+            Server.customer_name.ilike(f"%{search}%"),
         ))
-    if os_name:             q = q.filter(Server.os_name.ilike(f"%{os_name}%"))
-    if os_version:          q = q.filter(Server.os_version.ilike(f"%{os_version}%"))
-    if status:              q = q.filter(Server.status.ilike(f"%{status}%"))
-    if environment:         q = q.filter(Server.environment.ilike(f"%{environment}%"))
-    if platform:            q = q.filter(Server.platform.ilike(f"%{platform}%"))
-    if location:            q = q.filter(Server.location.ilike(f"%{location}%"))
-    if owner_team:          q = q.filter(Server.owner_team.ilike(f"%{owner_team}%"))
-    if criticality:         q = q.filter(Server.criticality.ilike(f"%{criticality}%"))
-    if subscription:        q = q.filter(Server.subscription.ilike(f"%{subscription}%"))
-    if crowdstrike:         q = q.filter(Server.crowdstrike.ilike(f"%{crowdstrike}%"))
-    if onboarded_defender:  q = q.filter(Server.onboarded_defender.ilike(f"%{onboarded_defender}%"))
+    if os_name:            q = q.filter(Server.os_name.ilike(f"%{os_name}%"))
+    if os_version:         q = q.filter(Server.os_version.ilike(f"%{os_version}%"))
+    if status:             q = q.filter(Server.status.ilike(f"%{status}%"))
+    if environment:        q = q.filter(Server.environment.ilike(f"%{environment}%"))
+    if platform:           q = q.filter(Server.platform.ilike(f"%{platform}%"))
+    if location:           q = q.filter(Server.location.ilike(f"%{location}%"))
+    if owner_team:         q = q.filter(Server.owner_team.ilike(f"%{owner_team}%"))
+    if criticality:        q = q.filter(Server.criticality.ilike(f"%{criticality}%"))
+    if subscription:       q = q.filter(Server.subscription.ilike(f"%{subscription}%"))
+    if crowdstrike:        q = q.filter(Server.crowdstrike.ilike(f"%{crowdstrike}%"))
+    if onboarded_defender: q = q.filter(Server.onboarded_defender.ilike(f"%{onboarded_defender}%"))
+    if customer_name:      q = q.filter(Server.customer_name.ilike(f"%{customer_name}%"))
 
     total = q.count()
-    items = q.order_by(Server.sl, Server.id).offset((page - 1) * page_size).limit(page_size).all()
+    items = q.order_by(Server.sl, Server.id).offset((page-1)*page_size).limit(page_size).all()
     return {"total": total, "page": page, "page_size": page_size, "items": [ServerOut.model_validate(s) for s in items]}
 
 @router.get("/meta/filters")
 def get_filter_options(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     def vals(col): return sorted([r[0] for r in db.query(distinct(col)).filter(col != None, col != "").all()])
     return {
-        "os_names":          vals(Server.os_name),
-        "os_versions":       vals(Server.os_version),
-        "environments":      vals(Server.environment),
-        "platforms":         vals(Server.platform),
-        "locations":         vals(Server.location),
-        "owner_teams":       vals(Server.owner_team),
-        "criticalities":     vals(Server.criticality),
-        "subscriptions":     vals(Server.subscription),
-        "statuses":          vals(Server.status),
-        "crowdstrike_vals":  vals(Server.crowdstrike),
-        "defender_vals":     vals(Server.onboarded_defender),
+        "os_names":         vals(Server.os_name),
+        "os_versions":      vals(Server.os_version),
+        "environments":     vals(Server.environment),
+        "platforms":        vals(Server.platform),
+        "locations":        vals(Server.location),
+        "owner_teams":      vals(Server.owner_team),
+        "criticalities":    vals(Server.criticality),
+        "subscriptions":    vals(Server.subscription),
+        "statuses":         vals(Server.status),
+        "crowdstrike_vals": vals(Server.crowdstrike),
+        "defender_vals":    vals(Server.onboarded_defender),
+        "customer_names":   vals(Server.customer_name),
     }
 
 @router.get("/{server_id}", response_model=ServerOut)
@@ -84,7 +86,7 @@ def get_server(server_id: int, db: Session = Depends(get_db), current_user=Depen
     return s
 
 @router.post("/", response_model=ServerOut)
-def create_server(data: ServerCreate, db: Session = Depends(get_db), current_user=Depends(require_role("admin", "editor"))):
+def create_server(data: ServerCreate, db: Session = Depends(get_db), current_user=Depends(require_role("admin","editor"))):
     s = Server(**data.model_dump(), created_by=current_user.id)
     db.add(s); db.commit(); db.refresh(s)
     log_action(db, current_user.id, "create", s.id, {"hostname": s.hostname})
@@ -92,7 +94,7 @@ def create_server(data: ServerCreate, db: Session = Depends(get_db), current_use
     return s
 
 @router.put("/{server_id}", response_model=ServerOut)
-def update_server(server_id: int, data: ServerUpdate, db: Session = Depends(get_db), current_user=Depends(require_role("admin", "editor"))):
+def update_server(server_id: int, data: ServerUpdate, db: Session = Depends(get_db), current_user=Depends(require_role("admin","editor"))):
     s = db.query(Server).filter(Server.id == server_id).first()
     if not s: raise HTTPException(status_code=404, detail="Server not found")
     for k, v in data.model_dump(exclude_unset=True).items():
@@ -110,3 +112,15 @@ def delete_server(server_id: int, db: Session = Depends(get_db), current_user=De
     log_action(db, current_user.id, "delete", s.id, {"hostname": s.hostname})
     db.delete(s); db.commit()
     return {"detail": "Deleted"}
+
+@router.delete("/bulk/delete")
+def bulk_delete(ids: list[int], db: Session = Depends(get_db), current_user=Depends(require_role("admin"))):
+    deleted = 0
+    for sid in ids:
+        s = db.query(Server).filter(Server.id == sid).first()
+        if s:
+            log_action(db, current_user.id, "delete", s.id, {"hostname": s.hostname})
+            db.delete(s)
+            deleted += 1
+    db.commit()
+    return {"deleted": deleted}
